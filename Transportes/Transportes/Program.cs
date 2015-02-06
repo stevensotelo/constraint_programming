@@ -18,8 +18,10 @@ namespace Transportes
                 Model model = solver.CreateModel();
 
                 // Matriz de costo de envios
-                int castigo=int.MaxValue;
-                int[,] costos=new int[,]{{20,19,14,21,16},{15,20,13,19,16},{18,15,18,20,castigo}};
+                int castigo=int.MaxValue;                
+                Set costos = new Set(Domain.Integer,"costos");
+                Parameter pCostos = new Parameter(Domain.Integer, "pCostos",costos);
+                pCostos.SetBinding( new List<int>(){20,19,14,21,16,15,20,13,19,16,18,15,18,20,castigo});
 
                 // Creación de variables de toma de decisiones
                 Set setX = new Set(Domain.Integer, "x");
@@ -36,10 +38,11 @@ namespace Transportes
                 
                 // Restriciones
                 model.AddConstraints("disponibilidad_fabrica", Model.ForEach(disponibilidad, d => Model.Sum(Model.ForEach(requerimiento, r => x[r, d])) == pDisponibilidad[d]));
+                model.AddConstraints("disponibilidad_fabrica", Model.ForEach(requerimiento, r => Model.Sum(Model.ForEach(disponibilidad, d => x[r, d])) == pRequerimiento[r]));
 
                 // Objetivo
                 //Model.ForEach(x, i => x[i] * costos[int.Parse(x[i].Name[1]), int.Parse(x[i].Name[2])]);
-                model.AddGoal("minimo",GoalKind.Minimize,Model.Sum(x));
+                model.AddGoal("minimo",GoalKind.Minimize,Model.Sum(Model.ForEach(x, i => x[i]*pCostos[i])));
 
                 Solution solucion = solver.Solve(new SimplexDirective());
                 Report reporte = solucion.GetReport();
