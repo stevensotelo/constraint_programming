@@ -22,23 +22,24 @@ namespace Transportes
                 int[,] costos=new int[,]{{20,19,14,21,16},{15,20,13,19,16},{18,15,18,20,castigo}};
 
                 // Creación de variables de toma de decisiones
-                List<Decision> x = crearVariables("x");
+                Set setX = new Set(Domain.Integer, "x");
+                Decision x = new Decision(Domain.Integer, "xDecision", setX);                
+                model.AddDecision(x);
                 
-                model.AddDecisions(x.ToArray());
+                // Parametros
+                Set disponibilidad = new Set(Domain.Integer,"disponibilidad");
+                Parameter pFabrica = new Parameter(Domain.Integer, "pDisponibilidad", disponibilidad);
+                disponibilidad.SetBinding(new List<int>() { 40, 60, 70 });
+                Set requerimiento = new Set(Domain.Integer, "requerimientos");
+                Parameter pRequerimiento = new Parameter(Domain.Integer, "pRequerimientos", requerimiento);
+                requerimiento.SetBinding(new List<int>() { 30, 40, 50, 40, 60 });
                 
-                // Restricciones
-                List<int> fabrica = new List<int>() { 40, 60, 70 };
-                List<int> distribuidores = new List<int>() { 30, 40, 50, 40, 60 };
-
-                for (int i = 1; i <= fabrica.Count; i++)
-                    model.AddConstraints("disponibilidad_fabrica" + i.ToString(), Model.Sum(x.Where(p => p.Name.StartsWith("x" + i.ToString())).ToArray()) <= fabrica[i - 1]);
-
-                for (int i = 1; i <= distribuidores.Count; i++)
-                    model.AddConstraints("requerimiento_distribuidor" + i.ToString(), Model.Sum(x.Where(p => p.Name.EndsWith(i.ToString())).ToArray()) <= distribuidores[i - 1]);
+                // Restriciones
+                model.AddConstraints("disponibilidad_fabrica" + Model.ForEach(disponibilidad, d => Model.Sum(Model.ForEach(requerimiento, s => x[s,d])) == disponibilidad[d]);
 
                 // Objetivo
                 //Model.ForEach(x, i => x[i] * costos[int.Parse(x[i].Name[1]), int.Parse(x[i].Name[2])]);
-                model.AddGoal("minimo",GoalKind.Minimize,Model.Sum(x)<0);
+                model.AddGoal("minimo",GoalKind.Minimize,Model.Sum(x));
 
                 Solution solucion = solver.Solve(new SimplexDirective());
                 Report reporte = solucion.GetReport();
