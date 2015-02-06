@@ -28,14 +28,14 @@ namespace Transportes
                 
                 // Parametros
                 Set disponibilidad = new Set(Domain.Integer,"disponibilidad");
-                Parameter pFabrica = new Parameter(Domain.Integer, "pDisponibilidad", disponibilidad);
+                Parameter pDisponibilidad = new Parameter(Domain.Integer, "pDisponibilidad", disponibilidad);
                 disponibilidad.SetBinding(new List<int>() { 40, 60, 70 });
                 Set requerimiento = new Set(Domain.Integer, "requerimientos");
                 Parameter pRequerimiento = new Parameter(Domain.Integer, "pRequerimientos", requerimiento);
                 requerimiento.SetBinding(new List<int>() { 30, 40, 50, 40, 60 });
                 
                 // Restriciones
-                model.AddConstraints("disponibilidad_fabrica" + Model.ForEach(disponibilidad, d => Model.Sum(Model.ForEach(requerimiento, s => x[s,d])) == disponibilidad[d]);
+                model.AddConstraints("disponibilidad_fabrica", Model.ForEach(disponibilidad, d => Model.Sum(Model.ForEach(requerimiento, r => x[r, d])) == pDisponibilidad[d]));
 
                 // Objetivo
                 //Model.ForEach(x, i => x[i] * costos[int.Parse(x[i].Name[1]), int.Parse(x[i].Name[2])]);
