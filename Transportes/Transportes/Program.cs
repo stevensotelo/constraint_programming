@@ -39,7 +39,7 @@ namespace Transportes
                 // Agregar parametros al modelo
                 model.AddParameter(pDisponibilidad);
                 model.AddParameter(pRequerimiento);
-                model.AddParameter(pCostos);
+                model.AddParameter(pCostos);                
 
                 // Restriciones
                 model.AddConstraints("rDisponibilidad", Model.ForEach(disponibilidad, d => Model.Sum(Model.ForEach(requerimiento, r => x[r, d])) <= pDisponibilidad[d]));
@@ -48,7 +48,7 @@ namespace Transportes
                 // Objetivo
                 model.AddGoal("minimo", GoalKind.Minimize,Model.Sum(Model.ForEach(disponibilidad, d => Model.Sum(Model.ForEach(requerimiento, r => x[r, d]*pCostos[r,d])))));
 
-                Solution solucion = solver.Solve(new SimplexDirective());
+                Solution solucion = solver.Solve();
                 Report reporte = solucion.GetReport();
                 Console.Write(reporte);
 
