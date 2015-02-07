@@ -60,16 +60,5 @@ namespace Transportes
                 Console.ReadLine();
             }
         }
-
-        public static List<Decision> crearVariables(string titulo)
-        {
-            List<Decision> vars = new List<Decision>();
-            for (int i = 1; i <= 3; i++)
-            {
-                for (int j = 1; j <= 5; j++)
-                    vars.Add(new Decision(Domain.Integer, titulo + i.ToString() + j.ToString()));
-            }
-            return vars;
-        }
     }
 }
