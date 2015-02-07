@@ -16,32 +16,37 @@ namespace Transportes
                 // Creación de espacio de trabajo
                 SolverContext solver = new SolverContext();
                 Model model = solver.CreateModel();
-
-                // Matriz de costo de envios
-                int castigo=int.MaxValue;                
-                Set costos = new Set(Domain.Any,"costos");
-                Parameter pCostos = new Parameter(Domain.Integer, "pCostos",costos);
-                pCostos.SetBinding( new int[,]{{20,19,14,21,16},{15,20,13,19,16},{18,15,18,20,castigo}});
-
-                // Creación de variables de toma de decisiones
-                Set setX = new Set(Domain.Any, "x");
-                Decision x = new Decision(Domain.Integer, "xDecision", setX);                
-                model.AddDecision(x);
-                
+                int castigo = int.MaxValue;
+                                                
                 // Parametros
                 Set disponibilidad = new Set(Domain.Any, "disponibilidad");
                 Parameter pDisponibilidad = new Parameter(Domain.Integer, "pDisponibilidad", disponibilidad);
-                disponibilidad.SetBinding(new List<int>() { 40, 60, 70 });
                 Set requerimiento = new Set(Domain.Any, "requerimientos");
                 Parameter pRequerimiento = new Parameter(Domain.Integer, "pRequerimientos", requerimiento);
+                Set costos = new Set(Domain.Any, "costos");
+                Parameter pCostos = new Parameter(Domain.Integer, "pCostos", disponibilidad, requerimiento);
+                                
+                // Creación de variables de toma de decisiones
+                Set setX = new Set(Domain.Any, "x");
+                Decision x = new Decision(Domain.Integer, "xDecision", disponibilidad,requerimiento);
+                model.AddDecision(x);
+
+                // Binding Parameters
+                disponibilidad.SetBinding(new List<int>() { 40, 60, 70 });
                 requerimiento.SetBinding(new List<int>() { 30, 40, 50, 40, 60 });
-                
+                costos.SetBinding((new int[,] { { 20, 19, 14, 21, 16 }, { 15, 20, 13, 19, 16 }, { 18, 15, 18, 20, castigo } }).Cast<int>().ToArray());
+
+                // Agregar parametros al modelo
+                model.AddParameter(pDisponibilidad);
+                model.AddParameter(pRequerimiento);
+                model.AddParameter(pCostos);
+
                 // Restriciones
                 model.AddConstraints("rDisponibilidad", Model.ForEach(disponibilidad, d => Model.Sum(Model.ForEach(requerimiento, r => x[r, d])) <= pDisponibilidad[d]));
                 model.AddConstraints("rRequerimientos", Model.ForEach(requerimiento, r => Model.Sum(Model.ForEach(disponibilidad, d => x[r, d])) <= pRequerimiento[r]));
 
                 // Objetivo
-                model.AddGoal("minimo", GoalKind.Minimize, Model.Sum(Model.ForEach(x, i => Model.Sum(Model.ForEach(x[i], j => x[i, j]*pCostos[i,j])))));
+                model.AddGoal("minimo", GoalKind.Minimize,Model.Sum(Model.ForEach(disponibilidad, d => Model.Sum(Model.ForEach(requerimiento, r => x[r, d]*pCostos[r,d])))));
 
                 Solution solucion = solver.Solve(new SimplexDirective());
                 Report reporte = solucion.GetReport();
