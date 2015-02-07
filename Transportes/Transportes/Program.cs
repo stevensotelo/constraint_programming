@@ -19,38 +19,35 @@ namespace Transportes
 
                 // Matriz de costo de envios
                 int castigo=int.MaxValue;                
-                Set costos = new Set(Domain.Integer,"costos");
+                Set costos = new Set(Domain.Any,"costos");
                 Parameter pCostos = new Parameter(Domain.Integer, "pCostos",costos);
-                pCostos.SetBinding( new List<int>(){20,19,14,21,16,15,20,13,19,16,18,15,18,20,castigo});
+                pCostos.SetBinding( new int[,]{{20,19,14,21,16},{15,20,13,19,16},{18,15,18,20,castigo}});
 
                 // Creación de variables de toma de decisiones
-                Set setX = new Set(Domain.Integer, "x");
+                Set setX = new Set(Domain.Any, "x");
                 Decision x = new Decision(Domain.Integer, "xDecision", setX);                
                 model.AddDecision(x);
                 
                 // Parametros
-                Set disponibilidad = new Set(Domain.Integer,"disponibilidad");
+                Set disponibilidad = new Set(Domain.Any, "disponibilidad");
                 Parameter pDisponibilidad = new Parameter(Domain.Integer, "pDisponibilidad", disponibilidad);
                 disponibilidad.SetBinding(new List<int>() { 40, 60, 70 });
-                Set requerimiento = new Set(Domain.Integer, "requerimientos");
+                Set requerimiento = new Set(Domain.Any, "requerimientos");
                 Parameter pRequerimiento = new Parameter(Domain.Integer, "pRequerimientos", requerimiento);
                 requerimiento.SetBinding(new List<int>() { 30, 40, 50, 40, 60 });
                 
                 // Restriciones
-                model.AddConstraints("disponibilidad_fabrica", Model.ForEach(disponibilidad, d => Model.Sum(Model.ForEach(requerimiento, r => x[r, d])) == pDisponibilidad[d]));
-                model.AddConstraints("disponibilidad_fabrica", Model.ForEach(requerimiento, r => Model.Sum(Model.ForEach(disponibilidad, d => x[r, d])) == pRequerimiento[r]));
+                model.AddConstraints("rDisponibilidad", Model.ForEach(disponibilidad, d => Model.Sum(Model.ForEach(requerimiento, r => x[r, d])) <= pDisponibilidad[d]));
+                model.AddConstraints("rRequerimientos", Model.ForEach(requerimiento, r => Model.Sum(Model.ForEach(disponibilidad, d => x[r, d])) <= pRequerimiento[r]));
 
                 // Objetivo
-                //Model.ForEach(x, i => x[i] * costos[int.Parse(x[i].Name[1]), int.Parse(x[i].Name[2])]);
-                model.AddGoal("minimo",GoalKind.Minimize,Model.Sum(Model.ForEach(x, i => x[i]*pCostos[i])));
+                model.AddGoal("minimo", GoalKind.Minimize, Model.Sum(Model.ForEach(x, i => Model.Sum(Model.ForEach(x[i], j => x[i, j]*pCostos[i,j])))));
 
                 Solution solucion = solver.Solve(new SimplexDirective());
                 Report reporte = solucion.GetReport();
                 Console.Write(reporte);
 
                 Console.ReadLine();
-
-
             }
             catch (Exception ex)
             {
