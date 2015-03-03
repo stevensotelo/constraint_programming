@@ -1,6 +1,7 @@
 ﻿using Microsoft.SolverFoundation.Services;
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -13,45 +14,35 @@ namespace Transportes
         {
             try
             {
-                // Creación de espacio de trabajo
-                SolverContext solver = new SolverContext();
-                Model model = solver.CreateModel();
-                int castigo = int.MaxValue;
-                                                
-                // Parametros
-                Set disponibilidad = new Set(Domain.Any, "disponibilidad");
-                Parameter pDisponibilidad = new Parameter(Domain.Integer, "pDisponibilidad", disponibilidad);
-                Set requerimiento = new Set(Domain.Any, "requerimientos");
-                Parameter pRequerimiento = new Parameter(Domain.Integer, "pRequerimientos", requerimiento);
-                Set costos = new Set(Domain.Any, "costos");
-                Parameter pCostos = new Parameter(Domain.Integer, "pCostos", disponibilidad, requerimiento);
-                                
-                // Creación de variables de toma de decisiones
-                Set setX = new Set(Domain.Any, "x");
-                Decision x = new Decision(Domain.Integer, "xDecision", disponibilidad,requerimiento);
+                SolverContext context = SolverContext.GetContext();
+                context.ClearModel();
+                Model model = context.CreateModel();
+
+                Set fabricas = new Set(Domain.Any, "fabricas");
+                Set distribuidores = new Set(Domain.Any, "distribuidores");
+
+                Parameter demanda = new Parameter(Domain.Integer, "demanda", distribuidores);
+                demanda.SetBinding(getDemanda().AsEnumerable(), "Demanda", "Distribuidor");
+
+                Parameter costos = new Parameter(Domain.Integer, "costos", fabricas, distribuidores);
+                costos.SetBinding(getCostos().AsEnumerable(), "Costo", "Fabrica", "Distribuidor");
+
+                Parameter disponibilidad = new Parameter(Domain.Integer, "disponibilidad", fabricas);
+                disponibilidad.SetBinding(getDisponibilidad().AsEnumerable(), "Disponibilidad", "Fabrica");
+
+                model.AddParameters(demanda, costos, disponibilidad);
+
+                Decision x = new Decision(Domain.RealNonnegative, "x", fabricas, distribuidores);
                 model.AddDecision(x);
 
-                // Binding Parameters
-                disponibilidad.SetBinding(new List<int>() { 40, 60, 70 });
-                requerimiento.SetBinding(new List<int>() { 30, 40, 50, 40, 60 });
-                costos.SetBinding((new int[,] { { 20, 19, 14, 21, 16 }, { 15, 20, 13, 19, 16 }, { 18, 15, 18, 20, castigo } }).Cast<int>().ToArray());
+                model.AddGoal("Meta", GoalKind.Minimize, Model.Sum(Model.ForEach(fabricas, f => Model.ForEach(distribuidores, d => costos[f, d] * x[f, d]))));
 
-                // Agregar parametros al modelo
-                model.AddParameter(pDisponibilidad);
-                model.AddParameter(pRequerimiento);
-                model.AddParameter(pCostos);                
+                model.AddConstraint("Disponibilidad", Model.ForEach(fabricas, f => Model.Sum(Model.ForEach(distribuidores, d => costos[f, d] * x[f, d])) <= disponibilidad[f]));
+                model.AddConstraint("Demanda", Model.ForEach(distribuidores, d => Model.Sum(Model.ForEach(fabricas, f => costos[f, d] * x[f, d])) <= demanda[d]));
 
-                // Restriciones
-                model.AddConstraints("rDisponibilidad", Model.ForEach(disponibilidad, d => Model.Sum(Model.ForEach(requerimiento, r => x[r, d])) <= pDisponibilidad[d]));
-                model.AddConstraints("rRequerimientos", Model.ForEach(requerimiento, r => Model.Sum(Model.ForEach(disponibilidad, d => x[r, d])) <= pRequerimiento[r]));
-
-                // Objetivo
-                model.AddGoal("minimo", GoalKind.Minimize,Model.Sum(Model.ForEach(disponibilidad, d => Model.Sum(Model.ForEach(requerimiento, r => x[r, d]*pCostos[r,d])))));
-
-                Solution solucion = solver.Solve();
-                Report reporte = solucion.GetReport();
-                Console.Write(reporte);
-
+                Solution solution = context.Solve(new SimplexDirective());
+                Report report = solution.GetReport();
+                Console.WriteLine(report);
                 Console.ReadLine();
             }
             catch (Exception ex)
@@ -60,5 +51,63 @@ namespace Transportes
                 Console.ReadLine();
             }
         }
+
+        public static DataTable getCostos()
+        {
+            DataTable r = new DataTable();
+            r.Columns.Add("Fabrica", typeof(string));
+            r.Columns.Add("Distribuidor", typeof(string));
+            r.Columns.Add("Costo", typeof(int));
+            for (int i = 0; i < fabricas.Count(); i++)
+            {
+                for (int j = 0; j < distribuidores.Count(); j++)
+                {
+                    DataRow fila = r.NewRow();
+                    fila[0] = fabricas[i];
+                    fila[1] = distribuidores[j];
+                    fila[2] = costos[i][j];
+                    r.Rows.Add(fila);
+                }
+
+            }
+            return r;
+        }
+
+        public static DataTable getDisponibilidad()
+        {
+            DataTable r = new DataTable();
+            r.Columns.Add("Fabrica", typeof(string));
+            r.Columns.Add("Disponibilidad", typeof(int));
+            for (int i = 0; i < disponibilidad.Length; i++)
+            {
+                DataRow fila = r.NewRow();
+                fila[0] = fabricas[i];
+                fila[1] = disponibilidad[i];
+                r.Rows.Add(fila);
+            }
+            return r;
+        }
+
+        public static DataTable getDemanda()
+        {
+            DataTable r = new DataTable();
+            r.Columns.Add("Distribuidor", typeof(string));
+            r.Columns.Add("Demanda", typeof(int));
+            for (int i = 0; i < demanda.Length; i++)
+            {
+                DataRow fila = r.NewRow();
+                fila[0] = distribuidores[i];
+                fila[1] = demanda[i];
+                r.Rows.Add(fila);
+            }
+            return r;
+        }
+
+        public static string[] fabricas = new string[] { "Fabrica 1", "Fabrica 2", "Fabrica 3" };
+        public static string[] distribuidores = new string[] { "Distribuidor 1", "Distribuidor 2", "Distribuidor 3", "Distribuidor 4", "Distribuidor 5" };
+
+        public static int[][] costos = new int[][] { new int[] { 20, 19, 14, 21, 16 }, new int[] { 15, 20, 13, 19, 16 }, new int[] { 18, 15, 18, 20, int.MaxValue } };
+        public static int[] demanda = new int[] { 30, 40, 50, 40, 60 };
+        public static int[] disponibilidad = new int[] { 40, 60, 70 };
     }
 }
