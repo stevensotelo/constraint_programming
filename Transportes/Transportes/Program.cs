@@ -14,6 +14,7 @@ namespace Transportes
         {
             try
             {
+                //https://nathanbrixius.wordpress.com/2009/04/24/modeling-a-production-planning-problem-using-solver-foundation/
                 SolverContext context = SolverContext.GetContext();
                 context.ClearModel();
                 Model model = context.CreateModel();
