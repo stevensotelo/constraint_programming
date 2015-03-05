@@ -36,10 +36,10 @@ namespace Transportes
                 Decision x = new Decision(Domain.RealNonnegative, "x", fabricas, distribuidores);
                 model.AddDecision(x);
 
+                model.AddConstraint("Disponibilidad", Model.ForEach(fabricas, f => Model.Sum(Model.ForEach(distribuidores, d => x[f, d])) <= disponibilidad[f]));
+                model.AddConstraint("Demanda", Model.ForEach(distribuidores, d => Model.Sum(Model.ForEach(fabricas, f =>  x[f, d])) >= demanda[d]));
+                
                 model.AddGoal("Meta", GoalKind.Minimize, Model.Sum(Model.ForEach(fabricas, f => Model.ForEach(distribuidores, d => costos[f, d] * x[f, d]))));
-
-                model.AddConstraint("Disponibilidad", Model.ForEach(fabricas, f => Model.Sum(Model.ForEach(distribuidores, d => costos[f, d] * x[f, d])) <= disponibilidad[f]));
-                model.AddConstraint("Demanda", Model.ForEach(distribuidores, d => Model.Sum(Model.ForEach(fabricas, f => costos[f, d] * x[f, d])) <= demanda[d]));
 
                 Solution solution = context.Solve(new SimplexDirective());
                 Report report = solution.GetReport();
@@ -104,11 +104,12 @@ namespace Transportes
             return r;
         }
 
-        public static string[] fabricas = new string[] { "Fabrica 1", "Fabrica 2", "Fabrica 3" };
+        public static string[] fabricas = new string[] { "Fabrica 1", "Fabrica 2", "Fabrica 3", "Fabrica 4" };        
         public static string[] distribuidores = new string[] { "Distribuidor 1", "Distribuidor 2", "Distribuidor 3", "Distribuidor 4", "Distribuidor 5" };
 
-        public static int[][] costos = new int[][] { new int[] { 20, 19, 14, 21, 16 }, new int[] { 15, 20, 13, 19, 16 }, new int[] { 18, 15, 18, 20, int.MaxValue } };
+        public static int[][] costos = new int[][] { new int[] { 20, 19, 14, 21, 16 }, new int[] { 15, 20, 13, 19, 16 }, new int[] { 18, 15, 18, 20, int.MaxValue }, new int[] { 0, 0, 0, 0, 0 } };
         public static int[] demanda = new int[] { 30, 40, 50, 40, 60 };
-        public static int[] disponibilidad = new int[] { 40, 60, 70 };
+        public static int[] disponibilidad = new int[] { 40, 60, 70, 50 };
+        
     }
 }
